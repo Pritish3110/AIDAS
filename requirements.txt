@@ -1,0 +1,42 @@
+# Core ML/DL libraries
+tensorflow>=2.13.0
+torch>=2.0.0
+torchvision>=0.15.0
+scikit-learn>=1.3.0
+numpy>=1.24.0
+pandas>=2.0.0
+
+# Image processing
+opencv-python>=4.8.0
+Pillow>=10.0.0
+albumentations>=1.3.0
+
+# Visualization
+matplotlib>=3.7.0
+seaborn>=0.12.0
+plotly>=5.15.0
+
+# Web framework and API
+flask>=2.3.0
+fastapi>=0.100.0
+uvicorn>=0.22.0
+werkzeug>=2.3.0
+
+# Utilities
+tqdm>=4.65.0
+pyyaml>=6.0
+python-dotenv>=1.0.0
+requests>=2.31.0
+
+# Model deployment
+onnx>=1.14.0
+onnxruntime>=1.15.0
+
+# Development and testing
+pytest>=7.4.0
+jupyter>=1.0.0
+ipykernel>=6.25.0
+
+# Additional utilities
+click>=8.1.0
+colorama>=0.4.6

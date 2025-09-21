@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animal Disease Classification</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .upload-zone {
+            border: 2px dashed #007bff;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: #f8f9fa;
+        }
+        .upload-zone:hover {
+            border-color: #0056b3;
+            background-color: #e3f2fd;
+        }
+        .upload-zone.dragover {
+            border-color: #28a745;
+            background-color: #d4edda;
+        }
+        .preview-image {
+            max-width: 300px;
+            max-height: 300px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .result-card {
+            border-left: 4px solid #007bff;
+            background-color: #f8f9fa;
+        }
+        .confidence-bar {
+            height: 20px;
+            background-color: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .confidence-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+        .high-confidence { background-color: #28a745; }
+        .medium-confidence { background-color: #ffc107; }
+        .low-confidence { background-color: #dc3545; }
+        .loading {
+            display: none;
+        }
+        .header-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header-bg">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1><i class="fas fa-paw me-2"></i>Animal Disease Classification</h1>
+                    <p class="mb-0">AI-powered disease detection for animal health monitoring</p>
+                </div>
+                <div class="col-md-4 text-md-end">
+                    <button class="btn btn-light" onclick="checkModelStatus()">
+                        <i class="fas fa-info-circle me-1"></i>Model Status
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mt-4">
+        <!-- Upload Section -->
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="fas fa-upload me-2"></i>Upload Image for Analysis</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="upload-zone" id="uploadZone">
+                            <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                            <h4>Drag & Drop or Click to Upload</h4>
+                            <p class="text-muted">Supported formats: JPG, JPEG, PNG, BMP, TIFF</p>
+                            <p class="text-muted">Maximum file size: 10MB</p>
+                            <input type="file" id="fileInput" class="d-none" accept="image/*" multiple>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label for="topK" class="form-label">Number of predictions:</label>
+                                    <select class="form-select" id="topK">
+                                        <option value="1">Top 1</option>
+                                        <option value="3" selected>Top 3</option>
+                                        <option value="5">Top 5</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 d-flex align-items-end">
+                                    <button class="btn btn-primary w-100" id="predictBtn" onclick="predictDisease()" disabled>
+                                        <i class="fas fa-brain me-2"></i>Analyze Image
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loading Animation -->
+                <div class="text-center mt-3 loading" id="loadingDiv">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Analyzing...</span>
+                    </div>
+                    <p class="mt-2">Analyzing image... Please wait.</p>
+                </div>
+
+                <!-- Image Preview -->
+                <div class="card shadow-sm mt-3" id="previewCard" style="display: none;">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-eye me-2"></i>Image Preview</h6>
+                    </div>
+                    <div class="card-body text-center" id="imagePreview">
+                        <!-- Images will be displayed here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="col-lg-4">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-info text-white">
+                        <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>How to Use</h6>
+                    </div>
+                    <div class="card-body">
+                        <ol class="mb-0">
+                            <li>Upload a clear image of the animal</li>
+                            <li>Select number of predictions you want</li>
+                            <li>Click "Analyze Image" button</li>
+                            <li>View results and recommendations</li>
+                        </ol>
+                        <hr>
+                        <h6><i class="fas fa-lightbulb me-2"></i>Tips for Best Results:</h6>
+                        <ul class="mb-0">
+                            <li>Use high-quality, well-lit images</li>
+                            <li>Focus on affected areas</li>
+                            <li>Avoid blurry or dark images</li>
+                            <li>Include multiple angles if possible</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm mt-3">
+                    <div class="card-header bg-warning text-dark">
+                        <h6 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Important Notice</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">
+                            <strong>This tool is for preliminary assessment only.</strong>
+                            Always consult with a qualified veterinarian for proper diagnosis and treatment.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div class="row mt-4" id="resultsSection" style="display: none;">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Analysis Results</h5>
+                    </div>
+                    <div class="card-body" id="resultsContent">
+                        <!-- Results will be displayed here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white mt-5 py-4">
+        <div class="container text-center">
+            <p class="mb-0">© 2024 Animal Disease Classification System. For educational and research purposes.</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        let selectedFiles = [];
+
+        // Initialize event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            const uploadZone = document.getElementById('uploadZone');
+            const fileInput = document.getElementById('fileInput');
+
+            // Click to upload
+            uploadZone.addEventListener('click', () => fileInput.click());
+
+            // Drag and drop
+            uploadZone.addEventListener('dragover', handleDragOver);
+            uploadZone.addEventListener('dragleave', handleDragLeave);
+            uploadZone.addEventListener('drop', handleDrop);
+
+            // File selection
+            fileInput.addEventListener('change', handleFileSelect);
+        });
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            document.getElementById('uploadZone').classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            document.getElementById('uploadZone').classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            document.getElementById('uploadZone').classList.remove('dragover');
+            const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
+            handleFiles(files);
+        }
+
+        function handleFileSelect(e) {
+            const files = Array.from(e.target.files);
+            handleFiles(files);
+        }
+
+        function handleFiles(files) {
+            selectedFiles = files.slice(0, 10); // Limit to 10 files
+            document.getElementById('predictBtn').disabled = selectedFiles.length === 0;
+            
+            // Show preview
+            showImagePreview();
+        }
+
+        function showImagePreview() {
+            const previewCard = document.getElementById('previewCard');
+            const imagePreview = document.getElementById('imagePreview');
+            
+            if (selectedFiles.length === 0) {
+                previewCard.style.display = 'none';
+                return;
+            }
+
+            imagePreview.innerHTML = '';
+            previewCard.style.display = 'block';
+
+            selectedFiles.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const div = document.createElement('div');
+                    div.className = 'col-md-4 mb-3';
+                    div.innerHTML = `
+                        <img src="${e.target.result}" class="preview-image img-fluid" alt="Preview ${index + 1}">
+                        <p class="mt-1 text-muted">${file.name}</p>
+                    `;
+                    imagePreview.appendChild(div);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function predictDisease() {
+            if (selectedFiles.length === 0) {
+                alert('Please select at least one image first.');
+                return;
+            }
+
+            const loadingDiv = document.getElementById('loadingDiv');
+            const resultsSection = document.getElementById('resultsSection');
+            const predictBtn = document.getElementById('predictBtn');
+            const topK = document.getElementById('topK').value;
+
+            // Show loading
+            loadingDiv.style.display = 'block';
+            resultsSection.style.display = 'none';
+            predictBtn.disabled = true;
+
+            try {
+                const formData = new FormData();
+                
+                // Add files
+                selectedFiles.forEach(file => {
+                    formData.append('files', file);
+                });
+                formData.append('top_k', topK);
+
+                const endpoint = selectedFiles.length === 1 ? '/predict' : '/predict/batch';
+                if (selectedFiles.length === 1) {
+                    formData.delete('files');
+                    formData.append('file', selectedFiles[0]);
+                }
+
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    displayResults(result, selectedFiles.length === 1);
+                } else {
+                    throw new Error(result.detail || 'Prediction failed');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert(`Error: ${error.message}`);
+            } finally {
+                loadingDiv.style.display = 'none';
+                predictBtn.disabled = false;
+            }
+        }
+
+        function displayResults(result, singleFile) {
+            const resultsContent = document.getElementById('resultsContent');
+            const resultsSection = document.getElementById('resultsSection');
+            
+            resultsContent.innerHTML = '';
+
+            if (singleFile) {
+                displaySingleResult(result, resultsContent);
+            } else {
+                displayBatchResults(result, resultsContent);
+            }
+
+            resultsSection.style.display = 'block';
+            resultsSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function displaySingleResult(result, container) {
+            const confidence = result.top_prediction.confidence;
+            const confidenceClass = confidence > 0.8 ? 'high-confidence' : 
+                                  confidence > 0.6 ? 'medium-confidence' : 'low-confidence';
+
+            container.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-trophy me-2"></i>Top Prediction</h6>
+                        <div class="result-card p-3 rounded mb-3">
+                            <h5 class="text-capitalize">${result.top_prediction.class.replace(/_/g, ' ')}</h5>
+                            <div class="confidence-bar mb-2">
+                                <div class="confidence-fill ${confidenceClass}" 
+                                     style="width: ${confidence * 100}%"></div>
+                            </div>
+                            <small>Confidence: ${(confidence * 100).toFixed(1)}%</small>
+                        </div>
+                        
+                        ${result.explanation ? `
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-lightbulb me-2"></i>AI Explanation</h6>
+                            <p class="mb-1">${result.explanation.explanation}</p>
+                            <hr>
+                            <p class="mb-0"><strong>Recommendation:</strong><br>${result.explanation.recommendation}</p>
+                        </div>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-list me-2"></i>All Predictions</h6>
+                        ${result.predictions.map((pred, index) => `
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="text-capitalize">${pred.class.replace(/_/g, ' ')}</span>
+                                <span class="badge bg-primary">${pred.percentage.toFixed(1)}%</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function displayBatchResults(result, container) {
+            let html = `<h6><i class="fas fa-images me-2"></i>Batch Analysis Results (${result.total_files} files)</h6>`;
+            
+            result.results.forEach((fileResult, index) => {
+                if (fileResult.success) {
+                    const confidence = fileResult.top_prediction.confidence;
+                    const confidenceClass = confidence > 0.8 ? 'high-confidence' : 
+                                          confidence > 0.6 ? 'medium-confidence' : 'low-confidence';
+                    
+                    html += `
+                        <div class="result-card p-3 rounded mb-3">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <h6>${fileResult.filename}</h6>
+                                    <h5 class="text-capitalize text-primary">
+                                        ${fileResult.top_prediction.class.replace(/_/g, ' ')}
+                                    </h5>
+                                    <div class="confidence-bar mb-2">
+                                        <div class="confidence-fill ${confidenceClass}" 
+                                             style="width: ${confidence * 100}%"></div>
+                                    </div>
+                                    <small>Confidence: ${(confidence * 100).toFixed(1)}%</small>
+                                </div>
+                                <div class="col-md-8">
+                                    <small class="text-muted">All predictions:</small><br>
+                                    ${fileResult.predictions.map(pred => 
+                                        `<span class="badge bg-secondary me-1 mb-1">
+                                            ${pred.class.replace(/_/g, ' ')}: ${pred.percentage.toFixed(1)}%
+                                         </span>`
+                                    ).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="alert alert-danger">
+                            <strong>${fileResult.filename}:</strong> ${fileResult.error}
+                        </div>
+                    `;
+                }
+            });
+            
+            container.innerHTML = html;
+        }
+
+        async function checkModelStatus() {
+            try {
+                const response = await fetch('/models/info');
+                const info = await response.json();
+                
+                let message = '';
+                if (info.model_loaded) {
+                    message = `✅ Model loaded successfully!
+                    
+Classes: ${info.num_classes}
+Supported diseases: ${info.class_names.join(', ').replace(/_/g, ' ')}`;
+                } else {
+                    message = '❌ No model loaded. Please ensure a trained model is available.';
+                }
+                
+                alert(message);
+            } catch (error) {
+                alert('Error checking model status: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

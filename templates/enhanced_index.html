@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐾 Animal Disease Classification System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            align-items: start;
+        }
+
+        .upload-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .results-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            min-height: 400px;
+        }
+
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background-color: #f8f9ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background-color: #f0f4ff;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            color: #ddd;
+            margin-bottom: 15px;
+        }
+
+        .upload-area.dragover .upload-icon {
+            color: #667eea;
+        }
+
+        .upload-text {
+            font-size: 1.1rem;
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 10px;
+            margin: 15px 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .prediction-result {
+            margin-top: 20px;
+        }
+
+        .prediction-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .prediction-header h3 {
+            margin-left: 10px;
+            font-size: 1.3rem;
+        }
+
+        .main-prediction {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .main-prediction.healthy {
+            background: linear-gradient(45deg, #28a745, #20c997);
+        }
+
+        .main-prediction.foot_and_mouth_disease {
+            background: linear-gradient(45deg, #dc3545, #c82333);
+        }
+
+        .main-prediction.lumpy_skin_disease {
+            background: linear-gradient(45deg, #fd7e14, #e55a4e);
+        }
+
+        .prediction-class {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+            text-transform: capitalize;
+        }
+
+        .prediction-confidence {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .all-predictions {
+            margin-bottom: 20px;
+        }
+
+        .prediction-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+
+        .prediction-item.top {
+            background: linear-gradient(45deg, #e3f2fd, #f3e5f5);
+        }
+
+        .prediction-name {
+            font-weight: 500;
+            text-transform: capitalize;
+        }
+
+        .prediction-bar {
+            flex: 1;
+            margin: 0 15px;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .prediction-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .prediction-percentage {
+            font-weight: bold;
+            min-width: 50px;
+        }
+
+        .disease-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .disease-info h4 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .disease-description {
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .symptoms, .recommendations {
+            margin-bottom: 15px;
+        }
+
+        .symptoms h5, .recommendations h5 {
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 1rem;
+        }
+
+        .symptoms ul, .recommendations ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .symptoms li, .recommendations li {
+            padding: 5px 0;
+            color: #666;
+        }
+
+        .symptoms li:before {
+            content: "🔸 ";
+        }
+
+        .recommendations li:before {
+            content: "💡 ";
+        }
+
+        .severity-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 15px;
+            color: white;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .severity-none {
+            background: #28a745;
+        }
+
+        .severity-high {
+            background: #fd7e14;
+        }
+
+        .severity-critical {
+            background: #dc3545;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border: 1px solid #f5c6cb;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .upload-section, .results-section {
+                padding: 20px;
+            }
+        }
+
+        .nav-menu {
+            margin-top: 25px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .nav-btn.active {
+            background: rgba(255, 255, 255, 0.9);
+            color: #667eea;
+            border-color: rgba(255, 255, 255, 0.9);
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 30px;
+            padding: 20px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🐾 Animal Disease Classification System</h1>
+            <p>Advanced AI-powered disease detection for livestock health management</p>
+            
+            <!-- Navigation Menu -->
+            <div class="nav-menu">
+                <a href="/" class="nav-btn active">🏠 Home</a>
+                <a href="/dataset" class="nav-btn">📊 Dataset Info</a>
+                <a href="/results" class="nav-btn">📈 Training Results</a>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="upload-section">
+                <h2>📷 Upload Animal Image</h2>
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">
+                        Drag and drop an animal image here, or click to select
+                    </div>
+                    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                        Choose Image
+                    </button>
+                    <input type="file" id="fileInput" class="file-input" accept="image/*">
+                </div>
+
+                <div class="loading hidden" id="loading">
+                    <div class="spinner"></div>
+                    <p>Analyzing image with advanced AI...</p>
+                </div>
+
+                <div id="imagePreview"></div>
+            </div>
+
+            <div class="results-section">
+                <div id="initialMessage">
+                    <h3>🔬 AI Disease Detection</h3>
+                    <p>Upload an image of your animal to get instant disease classification with detailed information and recommendations.</p>
+                    
+                    <div style="margin-top: 30px;">
+                        <h4>🎯 What we can detect:</h4>
+                        <ul style="list-style: none; padding: 0; margin-top: 15px;">
+                            <li style="padding: 8px 0; color: #28a745;">✅ <strong>Healthy Animals</strong> - Normal, disease-free condition</li>
+                            <li style="padding: 8px 0; color: #dc3545;">🚨 <strong>Foot and Mouth Disease</strong> - Critical viral infection</li>
+                            <li style="padding: 8px 0; color: #fd7e14;">⚠️ <strong>Lumpy Skin Disease</strong> - Viral disease with skin nodules</li>
+                        </ul>
+                    </div>
+
+                    <div style="margin-top: 30px; padding: 15px; background: #e3f2fd; border-radius: 8px;">
+                        <strong>🎖️ High Accuracy Model</strong><br>
+                        <small>Our AI model has been trained on thousands of images and achieves over 90% accuracy in disease detection.</small>
+                    </div>
+                </div>
+
+                <div id="results" class="hidden">
+                    <div class="prediction-result">
+                        <div class="prediction-header">
+                            <span style="font-size: 2rem;">🎯</span>
+                            <h3>Prediction Results</h3>
+                        </div>
+
+                        <div id="mainPrediction" class="main-prediction">
+                            <div class="prediction-class" id="predictedClass"></div>
+                            <div class="prediction-confidence" id="confidence"></div>
+                        </div>
+
+                        <div class="all-predictions">
+                            <h4>📊 All Predictions:</h4>
+                            <div id="allPredictions"></div>
+                        </div>
+
+                        <div id="diseaseInfo" class="disease-info"></div>
+                    </div>
+                </div>
+
+                <div id="error" class="error-message hidden">
+                    <strong>⚠️ Error:</strong>
+                    <span id="errorMessage"></span>
+                </div>
+            </div>
+        </div>
+
+        <footer class="footer">
+            <p>🔬 Powered by Advanced Deep Learning | 🏥 For veterinary guidance only</p>
+            <small>Always consult with a qualified veterinarian for proper diagnosis and treatment</small>
+        </footer>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const loading = document.getElementById('loading');
+        const imagePreview = document.getElementById('imagePreview');
+        const results = document.getElementById('results');
+        const error = document.getElementById('error');
+        const initialMessage = document.getElementById('initialMessage');
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showError('Please select a valid image file.');
+                return;
+            }
+
+            if (file.size > 16 * 1024 * 1024) {
+                showError('File size must be less than 16MB.');
+                return;
+            }
+
+            showLoading();
+            hideError();
+            hideResults();
+
+            // Preview image
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                imagePreview.innerHTML = `<img src="${e.target.result}" class="preview-image" alt="Preview">`;
+            };
+            reader.readAsDataURL(file);
+
+            // Upload and predict
+            uploadAndPredict(file);
+        }
+
+        function uploadAndPredict(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/predict', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                if (data.success) {
+                    showResults(data);
+                } else {
+                    showError(data.error || 'An error occurred during prediction.');
+                }
+            })
+            .catch(err => {
+                hideLoading();
+                showError('Network error. Please check your connection and try again.');
+                console.error('Error:', err);
+            });
+        }
+
+        function showResults(data) {
+            initialMessage.classList.add('hidden');
+            results.classList.remove('hidden');
+
+            // Main prediction
+            const mainPrediction = document.getElementById('mainPrediction');
+            const predictedClass = data.predicted_class.replace(/_/g, ' ');
+            
+            document.getElementById('predictedClass').textContent = predictedClass;
+            document.getElementById('confidence').textContent = 
+                `Confidence: ${data.confidence_percentage.toFixed(1)}%`;
+
+            // Style based on prediction
+            mainPrediction.className = `main-prediction ${data.predicted_class}`;
+
+            // All predictions
+            const allPredictions = document.getElementById('allPredictions');
+            allPredictions.innerHTML = '';
+
+            data.all_predictions.forEach((pred, index) => {
+                const item = document.createElement('div');
+                item.className = `prediction-item ${index === 0 ? 'top' : ''}`;
+                
+                const color = getColorForClass(pred.class);
+                
+                item.innerHTML = `
+                    <span class="prediction-name">${pred.class.replace(/_/g, ' ')}</span>
+                    <div class="prediction-bar">
+                        <div class="prediction-fill" style="width: ${pred.percentage}%; background: ${color};"></div>
+                    </div>
+                    <span class="prediction-percentage">${pred.percentage.toFixed(1)}%</span>
+                `;
+                allPredictions.appendChild(item);
+            });
+
+            // Disease information
+            if (data.disease_info) {
+                showDiseaseInfo(data.disease_info);
+            }
+        }
+
+        function showDiseaseInfo(diseaseInfo) {
+            const diseaseInfoDiv = document.getElementById('diseaseInfo');
+            
+            const severityClass = diseaseInfo.severity ? 
+                `severity-${diseaseInfo.severity.toLowerCase()}` : 'severity-none';
+            
+            diseaseInfoDiv.innerHTML = `
+                <h4>
+                    ℹ️ Disease Information
+                    ${diseaseInfo.severity ? 
+                        `<span class="severity-badge ${severityClass}">${diseaseInfo.severity}</span>` 
+                        : ''}
+                </h4>
+                <p class="disease-description">${diseaseInfo.description || ''}</p>
+                
+                ${diseaseInfo.symptoms && diseaseInfo.symptoms.length > 0 ? `
+                    <div class="symptoms">
+                        <h5>🔸 Symptoms:</h5>
+                        <ul>
+                            ${diseaseInfo.symptoms.map(symptom => `<li>${symptom}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+                
+                ${diseaseInfo.recommendations && diseaseInfo.recommendations.length > 0 ? `
+                    <div class="recommendations">
+                        <h5>💡 Recommendations:</h5>
+                        <ul>
+                            ${diseaseInfo.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+            `;
+        }
+
+        function getColorForClass(className) {
+            const colors = {
+                'healthy': '#28a745',
+                'foot_and_mouth_disease': '#dc3545',
+                'lumpy_skin_disease': '#fd7e14'
+            };
+            return colors[className] || '#6c757d';
+        }
+
+        function showLoading() {
+            loading.classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            loading.classList.add('hidden');
+        }
+
+        function showError(message) {
+            document.getElementById('errorMessage').textContent = message;
+            error.classList.remove('hidden');
+        }
+
+        function hideError() {
+            error.classList.add('hidden');
+        }
+
+        function hideResults() {
+            results.classList.add('hidden');
+            initialMessage.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
