@@ -1,4 +1,4 @@
-# Animal Disease Classification System
+# Animal Injury Detection Assisted System
 
 A comprehensive end-to-end machine learning system for identifying and classifying animal diseases from images using deep learning techniques.
 
