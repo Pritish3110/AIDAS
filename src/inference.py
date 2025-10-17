@@ -12,6 +12,14 @@ import json
 from config import Config
 from data_preprocessing import DataPreprocessor
 
+# Optional Grad-CAM import
+try:
+    from gradcam import GradCAMIntegration
+    GRADCAM_AVAILABLE = True
+except ImportError:
+    GRADCAM_AVAILABLE = False
+    logger.warning("Grad-CAM functionality not available")
+
 logging.basicConfig(level=getattr(logging, Config.LOG_LEVEL), format=Config.LOG_FORMAT)
 logger = logging.getLogger(__name__)
 
@@ -32,6 +40,7 @@ class DiseasePredictor:
         self.model = None
         self.class_names = None
         self.preprocessor = DataPreprocessor(self.config)
+        self.gradcam_integration = None
         
         self.load_model(model_path)
     
@@ -56,6 +65,15 @@ class DiseasePredictor:
                 self.class_names = self.config.DISEASE_CATEGORIES
             
             logger.info(f"Model loaded successfully. Classes: {self.class_names}")
+            
+            # Initialize Grad-CAM if available
+            if GRADCAM_AVAILABLE:
+                try:
+                    self.gradcam_integration = GradCAMIntegration(self.model, self.class_names)
+                    logger.info("Grad-CAM integration initialized")
+                except Exception as e:
+                    logger.warning(f"Failed to initialize Grad-CAM: {e}")
+                    self.gradcam_integration = None
             
         except Exception as e:
             logger.error(f"Error loading model: {str(e)}")
@@ -221,6 +239,118 @@ class DiseasePredictor:
         }
         
         return result
+    
+    def predict_with_gradcam(self, image_path: str, top_k: int = 3) -> Dict:
+        """
+        Get prediction with Grad-CAM visualizations.
+        
+        Args:
+            image_path: Path to the image file
+            top_k: Number of top predictions to include
+            
+        Returns:
+            Dictionary with prediction and Grad-CAM results
+        """
+        if not self.gradcam_integration:
+            return {
+                'error': 'Grad-CAM not available. Please ensure the model supports Grad-CAM visualization.'
+            }
+        
+        try:
+            # Load and preprocess image
+            image = self.preprocessor.load_and_preprocess_image(image_path)
+            if image is None:
+                return {'error': 'Failed to load or preprocess image'}
+            
+            # Get prediction with Grad-CAM
+            gradcam_result = self.gradcam_integration.get_prediction_with_gradcam(
+                image, top_k=top_k, include_all_heatmaps=True
+            )
+            
+            # Add additional context
+            result = {
+                'image_path': image_path,
+                'prediction': gradcam_result['prediction'],
+                'all_predictions': gradcam_result['all_predictions'],
+                'gradcam': gradcam_result['gradcam'],
+                'explanation': self._get_gradcam_explanation(
+                    gradcam_result['prediction']['predicted_class'],
+                    gradcam_result['prediction']['confidence']
+                )
+            }
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error in Grad-CAM prediction for {image_path}: {str(e)}")
+            return {'error': str(e)}
+    
+    def _get_gradcam_explanation(self, predicted_class: str, confidence: float) -> Dict:
+        """
+        Get explanation for Grad-CAM visualization.
+        
+        Args:
+            predicted_class: Predicted disease class
+            confidence: Confidence score
+            
+        Returns:
+            Explanation dictionary
+        """
+        explanation = {
+            'visual_explanation': 'The colored heatmap shows which parts of the image the AI model focused on when making its prediction.',
+            'color_interpretation': {
+                'red/hot_areas': 'Most important regions for the prediction',
+                'blue/cool_areas': 'Less important regions',
+                'intensity': 'Higher intensity indicates greater importance'
+            },
+            'prediction_confidence': self._get_confidence_explanation(confidence),
+            'clinical_recommendation': self._get_recommendation(predicted_class, confidence)
+        }
+        
+        return explanation
+    
+    def _get_confidence_explanation(self, confidence: float) -> Dict:
+        """
+        Get explanation for confidence level.
+        
+        Args:
+            confidence: Confidence score
+            
+        Returns:
+            Confidence explanation dictionary
+        """
+        if confidence > 0.9:
+            level = 'Very High'
+            description = 'The model is extremely confident in its prediction.'
+            reliability = 'Very Reliable'
+        elif confidence > 0.8:
+            level = 'High'
+            description = 'The model is very confident in its prediction.'
+            reliability = 'Reliable'
+        elif confidence > 0.7:
+            level = 'Good'
+            description = 'The model has good confidence in its prediction.'
+            reliability = 'Generally Reliable'
+        elif confidence > 0.6:
+            level = 'Moderate'
+            description = 'The model has moderate confidence in its prediction.'
+            reliability = 'Moderately Reliable'
+        elif confidence > 0.5:
+            level = 'Low'
+            description = 'The model has low confidence in its prediction.'
+            reliability = 'Less Reliable'
+        else:
+            level = 'Very Low'
+            description = 'The model has very low confidence in its prediction.'
+            reliability = 'Unreliable'
+        
+        return {
+            'level': level,
+            'percentage': f"{confidence:.1%}",
+            'description': description,
+            'reliability': reliability,
+            'recommendation': 'Consider additional diagnostic methods.' if confidence < 0.7 else 'Prediction appears reliable.'
+        }
     
     def _get_recommendation(self, predicted_class: str, confidence: float) -> str:
         """

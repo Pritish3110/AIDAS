@@ -13,33 +13,56 @@ A comprehensive end-to-end machine learning system for identifying and classifyi
 - **Comprehensive Evaluation**: Detailed metrics, confusion matrices, and visualization
 - **Model Deployment**: Easy model serialization and deployment utilities
 
-## 📁 Project Structure
+🌈 Grad-CAM Explainability & Visualization
+Integrated Grad-CAM Visualization: Upload images and visualize attention heatmaps to see which regions influenced the model’s decision.
+
+Dedicated Grad-CAM Web Interface: Access /gradcam route and template for interactive explanations.
+
+Programmatic Access: Use the new /predict_gradcam API for JSON visualizations with base64-encoded heatmaps.
+
+Diagnostic Scripts: Tools like debug_gradcam.py, analyze_model.py, and test_gradcam.py for import validation, model architecture compatibility, and end-to-end Grad-CAM testing.
+
+Educational & Clinical Value: Helps users trust and interpret predictions, understand AI reasoning, and validates veterinary results.
+
+Robustness: Graceful fallback and clear errors if Grad-CAM is unavailable, with auto-detected layers and supported transfer learning models.
+
+## Concise Project Structure
+
+At a glance — where to find data and main components:
 
 ```
-animal-disease-classifier/
-├── src/                          # Source code
-│   ├── config.py                # Configuration settings
-│   ├── data_preprocessing.py    # Data handling and preprocessing
-│   ├── models.py               # Model architectures
-│   ├── train.py                # Training pipeline
-│   ├── evaluation.py           # Model evaluation and metrics
-│   ├── inference.py            # Prediction and inference
-│   └── app.py                  # FastAPI web application
-├── data/                       # Dataset storage
-│   ├── raw/                   # Raw dataset
-│   ├── processed/             # Processed images
-│   ├── train/                 # Training set
-│   ├── validation/            # Validation set
-│   └── test/                  # Test set
-├── models/                     # Saved models
-├── templates/                  # HTML templates
-├── static/                     # Static web assets
-├── notebooks/                  # Jupyter notebooks
-├── tests/                      # Unit tests
-├── docs/                      # Documentation
-├── requirements.txt           # Dependencies
-└── README.md                 # This file
+c:\Users\priti\Projects\AIDAS\
+├── data/                        # Datasets
+│   ├── raw/                     # Original images (per-class folders e.g. healthy/)
+│   ├── sample/                  # Small sample dataset for quick tests
+│   ├── enhanced_dataset/        # Preprocessed dataset used by enhanced training
+│   └── ultimate_dataset/        # Dataset assembled by ultimate training script
+├── models/                      # Saved model files and results JSON
+├── src/                         # Application source (config, inference, gradcam, etc.)
+│   ├── gradcam.py               # Main Grad-CAM implementation
+│   ├── inference.py             # Enhanced with Grad-CAM support
+│   └── ...                      # Other modules
+├── templates/                   # Flask HTML templates (used by enhanced_app.py)
+│   └── gradcam_index.html       # Dedicated Grad-CAM interface
+├── static/                      # Static assets for the web UI
+├── notebooks/                   # Jupyter notebooks
+├── tests/                       # Test scripts
+│   ├── test_gradcam.py          # Comprehensive test suite for Grad-CAM
+├── scripts/ or root scripts     # Training scripts (enhanced_90plus_train.py, ultimate_train.py, etc.)
+├── enhanced_app.py              # Flask app with Grad-CAM routes and initialization
+├── debug_gradcam.py             # Diagnostic tool for Grad-CAM import/troubleshooting
+├── analyze_model.py             # Model architecture analyzer (for Grad-CAM layers)
+├── LICENSE
+├── README.md
+└── requirements.txt
+
 ```
+
+Notes:
+- Put raw images under data/raw/<class_name>/ (e.g. data/raw/healthy/).
+- Trained models and result files live in the models/ directory.
+- Web UI is in enhanced_app.py (root) and uses templates/ and static/.
+- Source modules live in src/ for import by scripts and web app.
 
 ## 🚀 Quick Start
 
@@ -141,6 +164,67 @@ python app.py
 ```
 
 Visit `http://localhost:5000` to access the web interface.
+
+### 8. GradCam implementation
+
+What is Grad-CAM?
+Grad-CAM (Gradient-weighted Class Activation Mapping) generates visual explanations for the decisions made by convolutional neural networks. It highlights the important regions in an image that influenced the model’s predictions.
+
+How Grad-CAM Works in This Project
+Initialization: Grad-CAM integration starts on app launch and auto-detects suitable layers for explanation.
+
+User Flow: Upload images via the /gradcam web interface, trigger Grad-CAM, and receive visualization heatmaps.
+
+API: New endpoints like /predict_gradcam for programmatic access, yielding JSON results with model predictions, heatmap (base64-encoded), and feature explanations.
+
+Files and Modules:
+
+src/gradcam.py: Core heatmap generator and integration utilities
+
+src/inference.py: Optional Grad-CAM import and explanations
+
+enhanced_app.py: Grad-CAM initialization, endpoints/routes
+
+templates/gradcam_index.html: Dedicated Grad-CAM upload/visualization page
+
+debug_gradcam.py, analyze_model.py, test_gradcam.py: Model compatibility diagnostics, layer analysis, and test suites
+
+Example Usage (Web & API)
+# Single image Grad-CAM prediction
+from src.inference import DiseasePredictor
+result = predictor.get_prediction_explanation('path/to/image.jpg')
+heatmap = result['gradcam']['main_heatmap'] # base64 PNG for visualization
+
+API endpoint:
+curl -X POST -F "file=@image.jpg" http://localhost:5000/predict_gradcam
+
+Web Interface
+Visit /gradcam for interactive Grad-CAM demonstrations
+
+Upload images to view attention heatmaps highlighting model reasoning
+
+Compare multiple-class visualizations
+
+Utility Scripts
+debug_gradcam.py: Test Grad-CAM imports, model compatibility, troubleshoot issues
+
+analyze_model.py: Automatically locate layers for Grad-CAM in custom and transfer learning models
+
+test_gradcam.py: End-to-end Grad-CAM test and performance validation
+
+Error Handling & Robustness
+Graceful fallback if Grad-CAM unavailable
+
+Extensive compatibility checks and gradient validation
+
+Fallback visualizations and user-friendly error messages
+
+Educational & Clinical Impact
+Builds trust by explaining AI predictions
+
+Allows visual learning of disease patterns and model focus
+
+Facilitates validation and adoption in veterinary/clinical contexts
 
 ## 🎯 Supported Disease Categories
 
@@ -248,6 +332,20 @@ The system provides comprehensive evaluation metrics:
 | GET | `/models/info` | Model information |
 | GET | `/models/classes` | Supported classes |
 | POST | `/models/reload` | Reload model |
+| POST | `/predict_gradcam` | Grad-CAM prediction + heatmap |
+| GET | `/gradcam` | Grad-CAM web visualization |
+
+Example Grad-CAM Response
+{
+    "success": true,
+    "predicted_class": "healthy",
+    "confidence_percentage": 95.2,
+    "gradcam": {
+        "main_heatmap": "<base64-image>",
+        "target_layer": "mobilenetv2_1.40_224/Conv_1",
+        "multi_class_heatmaps": [...]
+    }
+}
 
 ### Example API Usage
 

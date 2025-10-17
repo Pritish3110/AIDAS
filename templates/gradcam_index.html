@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🐾 Animal Disease Classification System</title>
+    <title>🔍 Grad-CAM Visualization - AIDAS</title>
     <style>
         * {
             margin: 0;
@@ -19,7 +19,7 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
         }
 
@@ -38,6 +38,38 @@
         .header p {
             font-size: 1.1rem;
             opacity: 0.9;
+        }
+
+        .nav-menu {
+            margin-top: 25px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .nav-btn.active {
+            background: rgba(255, 255, 255, 0.9);
+            color: #667eea;
+            border-color: rgba(255, 255, 255, 0.9);
         }
 
         .main-content {
@@ -59,7 +91,7 @@
             border-radius: 15px;
             padding: 30px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            min-height: 400px;
+            min-height: 600px;
         }
 
         .upload-area {
@@ -148,19 +180,89 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
 
-        .prediction-result {
+        .gradcam-results {
             margin-top: 20px;
         }
 
-        .prediction-header {
+        .gradcam-header {
             display: flex;
             align-items: center;
             margin-bottom: 20px;
         }
 
-        .prediction-header h3 {
+        .gradcam-header h3 {
             margin-left: 10px;
             font-size: 1.3rem;
+        }
+
+        .visualization-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .visualization-item {
+            text-align: center;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .visualization-item h4 {
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 1rem;
+        }
+
+        .visualization-item img {
+            width: 100%;
+            max-width: 200px;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .multi-class-heatmaps {
+            margin-top: 30px;
+        }
+
+        .multi-class-heatmaps h4 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .heatmap-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .heatmap-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .heatmap-item h5 {
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 0.9rem;
+            text-transform: capitalize;
+        }
+
+        .heatmap-item .probability {
+            font-size: 0.8rem;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .heatmap-item img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
         .main-prediction {
@@ -185,127 +287,25 @@
         }
 
         .prediction-class {
-            font-size: 1.5rem;
+            font-size: 1.3rem;
             font-weight: bold;
             margin-bottom: 5px;
             text-transform: capitalize;
         }
 
         .prediction-confidence {
-            font-size: 1.2rem;
+            font-size: 1rem;
             opacity: 0.9;
         }
 
-        .all-predictions {
-            margin-bottom: 20px;
-        }
-
-        .prediction-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .layer-info {
+            background: #e3f2fd;
             padding: 10px;
-            margin: 5px 0;
             border-radius: 8px;
-            background: #f8f9fa;
-        }
-
-        .prediction-item.top {
-            background: linear-gradient(45deg, #e3f2fd, #f3e5f5);
-        }
-
-        .prediction-name {
-            font-weight: 500;
-            text-transform: capitalize;
-        }
-
-        .prediction-bar {
-            flex: 1;
-            margin: 0 15px;
-            height: 8px;
-            background: #e0e0e0;
-            border-radius: 4px;
-            overflow: hidden;
-        }
-
-        .prediction-fill {
-            height: 100%;
-            border-radius: 4px;
-            transition: width 0.5s ease;
-        }
-
-        .prediction-percentage {
-            font-weight: bold;
-            min-width: 50px;
-        }
-
-        .disease-info {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 20px;
-            margin-top: 20px;
-        }
-
-        .disease-info h4 {
-            color: #333;
             margin-bottom: 15px;
-            font-size: 1.2rem;
-        }
-
-        .disease-description {
-            color: #555;
-            line-height: 1.6;
-            margin-bottom: 15px;
-        }
-
-        .symptoms, .recommendations {
-            margin-bottom: 15px;
-        }
-
-        .symptoms h5, .recommendations h5 {
-            color: #333;
-            margin-bottom: 8px;
-            font-size: 1rem;
-        }
-
-        .symptoms ul, .recommendations ul {
-            list-style: none;
-            padding-left: 0;
-        }
-
-        .symptoms li, .recommendations li {
-            padding: 5px 0;
-            color: #666;
-        }
-
-        .symptoms li:before {
-            content: "🔸 ";
-        }
-
-        .recommendations li:before {
-            content: "💡 ";
-        }
-
-        .severity-badge {
-            display: inline-block;
-            padding: 5px 10px;
-            border-radius: 15px;
-            color: white;
-            font-size: 0.8rem;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-
-        .severity-none {
-            background: #28a745;
-        }
-
-        .severity-high {
-            background: #fd7e14;
-        }
-
-        .severity-critical {
-            background: #dc3545;
+            font-size: 0.9rem;
+            color: #1976d2;
+            text-align: center;
         }
 
         .error-message {
@@ -321,6 +321,38 @@
             display: none !important;
         }
 
+        .info-box {
+            background: #e3f2fd;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .info-box h4 {
+            color: #1976d2;
+            margin-bottom: 10px;
+        }
+
+        .info-box p {
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+
+        .info-box ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .info-box li {
+            padding: 5px 0;
+            color: #666;
+        }
+
+        .info-box li:before {
+            content: "🔍 ";
+        }
+
         @media (max-width: 768px) {
             .main-content {
                 grid-template-columns: 1fr;
@@ -334,38 +366,14 @@
             .upload-section, .results-section {
                 padding: 20px;
             }
-        }
 
-        .nav-menu {
-            margin-top: 25px;
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-        
-        .nav-btn {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            text-decoration: none;
-            padding: 12px 24px;
-            border-radius: 25px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            backdrop-filter: blur(10px);
-        }
-        
-        .nav-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        }
-        
-        .nav-btn.active {
-            background: rgba(255, 255, 255, 0.9);
-            color: #667eea;
-            border-color: rgba(255, 255, 255, 0.9);
+            .visualization-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .heatmap-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         .footer {
@@ -380,35 +388,46 @@
 <body>
     <div class="container">
         <header class="header">
-            <h1>🐾 Animal Disease Classification System</h1>
-            <p>Advanced AI-powered disease detection for livestock health management</p>
+            <h1>🔍 Grad-CAM Visualization</h1>
+            <p>Visual Explanations of AI Disease Classification</p>
             
             <!-- Navigation Menu -->
             <div class="nav-menu">
-                <a href="/" class="nav-btn active">🏠 Home</a>
+                <a href="/" class="nav-btn">🏠 Home</a>
                 <a href="/dataset" class="nav-btn">📊 Dataset Info</a>
                 <a href="/results" class="nav-btn">📈 Training Results</a>
-                <a href="/gradcam" class="nav-btn">🔍 Grad-CAM</a>
+                <a href="/gradcam" class="nav-btn active">🔍 Grad-CAM</a>
             </div>
         </header>
 
         <div class="main-content">
             <div class="upload-section">
-                <h2>📷 Upload Animal Image</h2>
+                <h2>📷 Upload for Grad-CAM Analysis</h2>
+                
+                <div class="info-box">
+                    <h4>🧠 What is Grad-CAM?</h4>
+                    <p>Grad-CAM (Gradient-weighted Class Activation Mapping) shows you exactly which parts of the image the AI model is looking at when making its prediction.</p>
+                    <ul>
+                        <li>Red/hot areas: Most important for the prediction</li>
+                        <li>Blue/cool areas: Less important regions</li>
+                        <li>Multiple visualizations for different prediction classes</li>
+                    </ul>
+                </div>
+                
                 <div class="upload-area" id="uploadArea">
                     <div class="upload-icon">📁</div>
                     <div class="upload-text">
-                        Drag and drop an animal image here, or click to select
+                        Drag and drop an animal image here for Grad-CAM analysis
                     </div>
                     <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
-                        Choose Image
+                        Choose Image for Analysis
                     </button>
                     <input type="file" id="fileInput" class="file-input" accept="image/*">
                 </div>
 
                 <div class="loading hidden" id="loading">
                     <div class="spinner"></div>
-                    <p>Analyzing image with advanced AI...</p>
+                    <p>Generating Grad-CAM visualizations...</p>
                 </div>
 
                 <div id="imagePreview"></div>
@@ -416,29 +435,30 @@
 
             <div class="results-section">
                 <div id="initialMessage">
-                    <h3>🔬 AI Disease Detection</h3>
-                    <p>Upload an image of your animal to get instant disease classification with detailed information and recommendations.</p>
+                    <h3>🔬 AI Model Explainability</h3>
+                    <p>Upload an image to see detailed visualizations of what the AI model focuses on during disease classification.</p>
                     
-                    <div style="margin-top: 30px;">
-                        <h4>🎯 What we can detect:</h4>
-                        <ul style="list-style: none; padding: 0; margin-top: 15px;">
-                            <li style="padding: 8px 0; color: #28a745;">✅ <strong>Healthy Animals</strong> - Normal, disease-free condition</li>
-                            <li style="padding: 8px 0; color: #dc3545;">🚨 <strong>Foot and Mouth Disease</strong> - Critical viral infection</li>
-                            <li style="padding: 8px 0; color: #fd7e14;">⚠️ <strong>Lumpy Skin Disease</strong> - Viral disease with skin nodules</li>
+                    <div class="info-box">
+                        <h4>🎯 How it Works:</h4>
+                        <ul>
+                            <li>Grad-CAM uses gradients to identify important image regions</li>
+                            <li>Heatmaps show model attention for each disease class</li>
+                            <li>Superimposed images overlay heatmaps on original photos</li>
+                            <li>Multiple visualizations help understand model reasoning</li>
                         </ul>
                     </div>
 
-                    <div style="margin-top: 30px; padding: 15px; background: #e3f2fd; border-radius: 8px;">
-                        <strong>🎖️ High Accuracy Model</strong><br>
-                        <small>Our AI model has been trained on thousands of images and achieves over 90% accuracy in disease detection.</small>
+                    <div style="margin-top: 30px; padding: 15px; background: #fff3cd; border-radius: 8px; border: 1px solid #ffeaa7;">
+                        <strong>🔬 Scientific Insight</strong><br>
+                        <small>These visualizations help veterinarians understand and trust AI predictions by showing the reasoning behind each diagnosis.</small>
                     </div>
                 </div>
 
                 <div id="results" class="hidden">
-                    <div class="prediction-result">
-                        <div class="prediction-header">
-                            <span style="font-size: 2rem;">🎯</span>
-                            <h3>Prediction Results</h3>
+                    <div class="gradcam-results">
+                        <div class="gradcam-header">
+                            <span style="font-size: 2rem;">🔍</span>
+                            <h3>Grad-CAM Analysis Results</h3>
                         </div>
 
                         <div id="mainPrediction" class="main-prediction">
@@ -446,12 +466,28 @@
                             <div class="prediction-confidence" id="confidence"></div>
                         </div>
 
-                        <div class="all-predictions">
-                            <h4>📊 All Predictions:</h4>
-                            <div id="allPredictions"></div>
+                        <div class="layer-info" id="layerInfo"></div>
+
+                        <div class="visualization-grid">
+                            <div class="visualization-item">
+                                <h4>📷 Original Image</h4>
+                                <img id="originalImage" alt="Original Image">
+                            </div>
+                            <div class="visualization-item">
+                                <h4>🔥 Attention Heatmap</h4>
+                                <img id="heatmapOnly" alt="Heatmap">
+                            </div>
                         </div>
 
-                        <div id="diseaseInfo" class="disease-info"></div>
+                        <div class="visualization-item" style="margin-bottom: 20px;">
+                            <h4>🎯 Superimposed Analysis</h4>
+                            <img id="superimposedImage" alt="Superimposed Image" style="max-width: 300px;">
+                        </div>
+
+                        <div class="multi-class-heatmaps">
+                            <h4>📊 Multi-Class Grad-CAM Visualizations</h4>
+                            <div class="heatmap-grid" id="multiClassHeatmaps"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -463,8 +499,8 @@
         </div>
 
         <footer class="footer">
-            <p>🔬 Powered by Advanced Deep Learning | 🏥 For veterinary guidance only</p>
-            <small>Always consult with a qualified veterinarian for proper diagnosis and treatment</small>
+            <p>🔬 Powered by Grad-CAM Technology | 🏥 For research and educational purposes</p>
+            <small>Visual explanations help improve trust and understanding in AI-assisted diagnosis</small>
         </footer>
     </div>
 
@@ -528,15 +564,15 @@
             };
             reader.readAsDataURL(file);
 
-            // Upload and predict
-            uploadAndPredict(file);
+            // Upload and analyze with Grad-CAM
+            uploadAndAnalyze(file);
         }
 
-        function uploadAndPredict(file) {
+        function uploadAndAnalyze(file) {
             const formData = new FormData();
             formData.append('file', file);
 
-            fetch('/predict', {
+            fetch('/predict_gradcam', {
                 method: 'POST',
                 body: formData
             })
@@ -546,7 +582,7 @@
                 if (data.success) {
                     showResults(data);
                 } else {
-                    showError(data.error || 'An error occurred during prediction.');
+                    showError(data.error || 'An error occurred during Grad-CAM analysis.');
                 }
             })
             .catch(err => {
@@ -571,74 +607,32 @@
             // Style based on prediction
             mainPrediction.className = `main-prediction ${data.predicted_class}`;
 
-            // All predictions
-            const allPredictions = document.getElementById('allPredictions');
-            allPredictions.innerHTML = '';
+            // Layer information
+            document.getElementById('layerInfo').textContent = 
+                `Analysis performed using layer: ${data.gradcam.target_layer}`;
 
-            data.all_predictions.forEach((pred, index) => {
-                const item = document.createElement('div');
-                item.className = `prediction-item ${index === 0 ? 'top' : ''}`;
-                
-                const color = getColorForClass(pred.class);
-                
-                item.innerHTML = `
-                    <span class="prediction-name">${pred.class.replace(/_/g, ' ')}</span>
-                    <div class="prediction-bar">
-                        <div class="prediction-fill" style="width: ${pred.percentage}%; background: ${color};"></div>
-                    </div>
-                    <span class="prediction-percentage">${pred.percentage.toFixed(1)}%</span>
-                `;
-                allPredictions.appendChild(item);
-            });
+            // Set images
+            document.getElementById('originalImage').src = data.image_data;
+            document.getElementById('heatmapOnly').src = data.gradcam.heatmap_only;
+            document.getElementById('superimposedImage').src = data.gradcam.main_heatmap;
 
-            // Disease information
-            if (data.disease_info) {
-                showDiseaseInfo(data.disease_info);
+            // Multi-class heatmaps
+            const multiClassContainer = document.getElementById('multiClassHeatmaps');
+            multiClassContainer.innerHTML = '';
+
+            if (data.gradcam.multi_class_heatmaps && data.gradcam.multi_class_heatmaps.length > 0) {
+                data.gradcam.multi_class_heatmaps.forEach(heatmap => {
+                    const item = document.createElement('div');
+                    item.className = 'heatmap-item';
+                    
+                    item.innerHTML = `
+                        <h5>${heatmap.class_name.replace(/_/g, ' ')}</h5>
+                        <div class="probability">Confidence: ${(heatmap.probability * 100).toFixed(1)}%</div>
+                        <img src="${heatmap.superimposed}" alt="${heatmap.class_name} heatmap">
+                    `;
+                    multiClassContainer.appendChild(item);
+                });
             }
-        }
-
-        function showDiseaseInfo(diseaseInfo) {
-            const diseaseInfoDiv = document.getElementById('diseaseInfo');
-            
-            const severityClass = diseaseInfo.severity ? 
-                `severity-${diseaseInfo.severity.toLowerCase()}` : 'severity-none';
-            
-            diseaseInfoDiv.innerHTML = `
-                <h4>
-                    ℹ️ Disease Information
-                    ${diseaseInfo.severity ? 
-                        `<span class="severity-badge ${severityClass}">${diseaseInfo.severity}</span>` 
-                        : ''}
-                </h4>
-                <p class="disease-description">${diseaseInfo.description || ''}</p>
-                
-                ${diseaseInfo.symptoms && diseaseInfo.symptoms.length > 0 ? `
-                    <div class="symptoms">
-                        <h5>🔸 Symptoms:</h5>
-                        <ul>
-                            ${diseaseInfo.symptoms.map(symptom => `<li>${symptom}</li>`).join('')}
-                        </ul>
-                    </div>
-                ` : ''}
-                
-                ${diseaseInfo.recommendations && diseaseInfo.recommendations.length > 0 ? `
-                    <div class="recommendations">
-                        <h5>💡 Recommendations:</h5>
-                        <ul>
-                            ${diseaseInfo.recommendations.map(rec => `<li>${rec}</li>`).join('')}
-                        </ul>
-                    </div>
-                ` : ''}
-            `;
-        }
-
-        function getColorForClass(className) {
-            const colors = {
-                'healthy': '#28a745',
-                'foot_and_mouth_disease': '#dc3545',
-                'lumpy_skin_disease': '#fd7e14'
-            };
-            return colors[className] || '#6c757d';
         }
 
         function showLoading() {
