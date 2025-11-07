@@ -75,7 +75,8 @@ cd animal-disease-classifier
 
 # Create virtual environment (Windows)
 python -m venv venv
-venv\Scripts\activate
+source venv/bin/activate
+python3 enhanced_app.py
 
 # Install dependencies
 pip install -r requirements.txt

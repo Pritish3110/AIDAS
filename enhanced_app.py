@@ -32,6 +32,14 @@ except ImportError as e:
     print(f"Grad-CAM functionality not available: {e}")
     GRADCAM_AVAILABLE = False
 
+# Import EigenCAM functionality
+try:
+    from eigencam import EigenCAMIntegration
+    EIGENCAM_AVAILABLE = True
+except ImportError as e:
+    print(f"EigenCAM functionality not available: {e}")
+    EIGENCAM_AVAILABLE = False
+
 app = Flask(__name__, template_folder='templates', static_folder='static')
 app.config['SECRET_KEY'] = 'animal-disease-classifier-2024'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
@@ -42,6 +50,7 @@ class_names = []
 disease_info = {}
 results_data = None
 gradcam_integration = None
+eigencam_integration = None
 
 def load_disease_information():
     """Load disease information and recommendations"""
@@ -136,7 +145,7 @@ def advanced_preprocess_image(image, target_size=(224, 224)):
 
 def load_model():
     """Load the trained model"""
-    global model, class_names, results_data, gradcam_integration
+    global model, class_names, results_data, gradcam_integration, eigencam_integration
     
     # Try to load the best available model
     model_paths = [
@@ -198,6 +207,17 @@ def load_model():
             gradcam_integration = None
     else:
         gradcam_integration = None
+    
+    # Initialize EigenCAM integration
+    if EIGENCAM_AVAILABLE and model is not None:
+        try:
+            eigencam_integration = EigenCAMIntegration(model, class_names)
+            print("✅ EigenCAM integration initialized successfully")
+        except Exception as e:
+            print(f"⚠️ Failed to initialize EigenCAM: {e}")
+            eigencam_integration = None
+    else:
+        eigencam_integration = None
 
 def predict_image(image):
     """Make prediction on uploaded image"""
@@ -577,6 +597,182 @@ def predict_with_gradcam():
 def gradcam_page():
     """Grad-CAM visualization page"""
     return render_template('gradcam_index.html')
+
+@app.route('/predict_eigencam', methods=['POST'])
+def predict_with_eigencam():
+    """Handle image upload and prediction with EigenCAM visualization"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No file uploaded'})
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No file selected'})
+        
+        # Check file type
+        allowed_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.bmp'}
+        file_ext = os.path.splitext(file.filename.lower())[1]
+        if file_ext not in allowed_extensions:
+            return jsonify({'success': False, 'error': 'Invalid file type. Please upload an image.'})
+        
+        # Check if EigenCAM is available
+        if eigencam_integration is None:
+            return jsonify({
+                'success': False, 
+                'error': 'EigenCAM visualization not available. Please ensure the model is loaded properly.'
+            })
+        
+        # Load and process image
+        image = Image.open(file.stream).convert('RGB')
+        
+        # Preprocess image for model
+        processed_img = advanced_preprocess_image(image)
+        
+        # Get prediction with EigenCAM
+        eigencam_result = eigencam_integration.get_prediction_with_eigencam(
+            processed_img, 
+            top_k=3, 
+            include_all_heatmaps=True
+        )
+        
+        # Add disease information
+        predicted_class = eigencam_result['prediction']['predicted_class']
+        disease_data = disease_info.get(predicted_class, {})
+        
+        # Convert original image to base64 for display
+        img_buffer = io.BytesIO()
+        image.save(img_buffer, format='JPEG', quality=85)
+        img_base64 = base64.b64encode(img_buffer.getvalue()).decode()
+        
+        result = {
+            'success': True,
+            'predicted_class': predicted_class,
+            'confidence': eigencam_result['prediction']['confidence'],
+            'confidence_percentage': eigencam_result['prediction']['confidence_percentage'],
+            'all_predictions': eigencam_result['all_predictions'],
+            'disease_info': disease_data,
+            'class_names': class_names,
+            'image_data': f"data:image/jpeg;base64,{img_base64}",
+            'eigencam': {
+                'main_heatmap': eigencam_result['eigencam']['main_heatmap']['superimposed_base64'],
+                'heatmap_only': eigencam_result['eigencam']['main_heatmap']['heatmap_base64'],
+                'target_layer': eigencam_result['eigencam']['target_layer'],
+                'multi_class_heatmaps': [
+                    {
+                        'class_name': hm['class_name'],
+                        'probability': hm['probability'],
+                        'rank': hm['rank'],
+                        'superimposed': hm['superimposed_base64'],
+                        'heatmap_only': hm['heatmap_base64']
+                    } for hm in eigencam_result['eigencam']['multi_class_heatmaps']
+                ] if 'multi_class_heatmaps' in eigencam_result['eigencam'] else []
+            }
+        }
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Error processing image with EigenCAM: {str(e)}'})
+
+@app.route('/eigencam')
+def eigencam_page():
+    """EigenCAM visualization page"""
+    return render_template('eigencam_index.html')
+
+@app.route('/predict_comparison', methods=['POST'])
+def predict_with_comparison():
+    """Handle image upload and prediction with both GradCAM and EigenCAM comparison"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No file uploaded'})
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No file selected'})
+        
+        # Check file type
+        allowed_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.bmp'}
+        file_ext = os.path.splitext(file.filename.lower())[1]
+        if file_ext not in allowed_extensions:
+            return jsonify({'success': False, 'error': 'Invalid file type. Please upload an image.'})
+        
+        # Check if both methods are available
+        if gradcam_integration is None or eigencam_integration is None:
+            return jsonify({
+                'success': False, 
+                'error': 'Comparison requires both GradCAM and EigenCAM to be available.'
+            })
+        
+        # Load and process image
+        image = Image.open(file.stream).convert('RGB')
+        
+        # Preprocess image for model
+        processed_img = advanced_preprocess_image(image)
+        
+        # Get predictions with both methods
+        import time
+        
+        start_time = time.time()
+        gradcam_result = gradcam_integration.get_prediction_with_gradcam(
+            processed_img, 
+            top_k=3, 
+            include_all_heatmaps=True
+        )
+        gradcam_time = (time.time() - start_time) * 1000  # Convert to ms
+        
+        start_time = time.time()
+        eigencam_result = eigencam_integration.get_prediction_with_eigencam(
+            processed_img, 
+            top_k=3, 
+            include_all_heatmaps=True
+        )
+        eigencam_time = (time.time() - start_time) * 1000  # Convert to ms
+        
+        # Add disease information
+        predicted_class = gradcam_result['prediction']['predicted_class']
+        disease_data = disease_info.get(predicted_class, {})
+        
+        # Convert original image to base64 for display
+        img_buffer = io.BytesIO()
+        image.save(img_buffer, format='JPEG', quality=85)
+        img_base64 = base64.b64encode(img_buffer.getvalue()).decode()
+        
+        result = {
+            'success': True,
+            'predicted_class': predicted_class,
+            'confidence': gradcam_result['prediction']['confidence'],
+            'confidence_percentage': gradcam_result['prediction']['confidence_percentage'],
+            'all_predictions': gradcam_result['all_predictions'],
+            'disease_info': disease_data,
+            'class_names': class_names,
+            'image_data': f"data:image/jpeg;base64,{img_base64}",
+            'gradcam': {
+                'main_heatmap': gradcam_result['gradcam']['main_heatmap']['superimposed_base64'],
+                'heatmap_only': gradcam_result['gradcam']['main_heatmap']['heatmap_base64'],
+                'target_layer': gradcam_result['gradcam']['target_layer'],
+                'generation_time_ms': gradcam_time
+            },
+            'eigencam': {
+                'main_heatmap': eigencam_result['eigencam']['main_heatmap']['superimposed_base64'],
+                'heatmap_only': eigencam_result['eigencam']['main_heatmap']['heatmap_base64'],
+                'target_layer': eigencam_result['eigencam']['target_layer'],
+                'generation_time_ms': eigencam_time
+            },
+            'comparison': {
+                'speed_ratio': gradcam_time / eigencam_time if eigencam_time > 0 else 1.0,
+                'gradcam_faster': gradcam_time < eigencam_time
+            }
+        }
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Error processing comparison: {str(e)}'})
+
+@app.route('/cam_comparison')
+def cam_comparison_page():
+    """CAM comparison visualization page"""
+    return render_template('cam_comparison.html')
 
 @app.route('/dataset')
 def dataset_table():
